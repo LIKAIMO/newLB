@@ -1,7 +1,7 @@
 #ifndef _NRF24L01_H_
 #define _NRF24L01_H_
 #include "stm32f10x.h"
-
+#include "sys_fun.h"
 
 
 //*********************************************NRF24L01*************************************
@@ -52,7 +52,7 @@
 #define MAX_TX  		0x10  //达到最大发送次数中断
 #define TX_OK   		0x20  //TX发送完成中断
 #define RX_OK   		0x40  //接收到数据中断
-
+#define NRF24L01_IRQ  PAin(15)  //IRQ主机数据输入
 
 char NRF24L01_INIT(void);
 void SetRX_Mode(void);
@@ -65,7 +65,7 @@ uint8_t NRF_Read_Buf(uint8_t reg, uint8_t *pBuf, uint8_t uchars);
 uint8_t NRF_Write_Buf(uint8_t reg, uint8_t *pBuf, uint8_t uchars);
 void Nrf_Irq(void);
 u8 NRF24L01_RxPacket(u8 *rxbuf);
-
+u8 NRF24L01_TxPacket(u8 *txbuf);
 u8 NRF24L01_Check(void);
 
 extern uint8_t NRF24L01_RXDATA[32];

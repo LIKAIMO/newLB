@@ -30,11 +30,12 @@ NRF24L01.c file
 #include "stdio.h"
 uint8_t NRF24L01_RXDATA[RX_PLOAD_WIDTH];//nrf24l01接收到的数据
 uint8_t NRF24L01_TXDATA[RX_PLOAD_WIDTH];//nrf24l01需要发送的数据
-
+u8 TxBuf[32];//发送数组
 
 
 //修改该接收和发送地址，可以供多个飞行器在同一区域飞行，数据不受干扰
-u8  RX_ADDRESS[RX_ADR_WIDTH]= {0x34,0xc3,0x10,0x10,0x00};	//接收地址				
+u8  RX_ADDRESS[RX_ADR_WIDTH]= {0x34,0xc3,0x10,0x10,0x01};	//接收地址				
+u8  TX_ADDRESS[TX_ADR_WIDTH]= {0x34,0xc3,0x10,0x10,0x02};	//发送地址
 
 
 //写寄存器
@@ -108,13 +109,56 @@ char NRF24L01_INIT(void)
 	SPI1_INIT();
 	
 	//check if NRF24L01 is in the SPI bus
-	NRF24L01_Check();
-	
-	//set the NRF RX Address,priority to the latest address in eeprom
-	//NRF24L01对频接收地址，优先匹配在eeprom中上一次地址
-	NRFmatching();								
+	if(NRF24L01_Check())
+	{
+		NRFmatching();	
+		return 1;
+	}
+	return 0;							
 }
 
+//发送模式
+void SetTX_Mode(void)
+{
+    SPI_CE_L();
+    NRF_Write_Reg(FLUSH_TX,0xff);										//清除TX FIFO寄存器		  
+    NRF_Write_Buf(NRF_WRITE_REG+TX_ADDR,(u8*)TX_ADDRESS,TX_ADR_WIDTH);		//写TX节点地址 
+  	NRF_Write_Buf(NRF_WRITE_REG+RX_ADDR_P0,(u8*)RX_ADDRESS,RX_ADR_WIDTH); 	//设置TX节点地址,主要为了使能ACK	  
+  	NRF_Write_Reg(NRF_WRITE_REG+EN_AA,0x01);     //使能通道0的自动应答    
+  	NRF_Write_Reg(NRF_WRITE_REG+EN_RXADDR,0x01); //使能通道0的接收地址  
+  	NRF_Write_Reg(NRF_WRITE_REG+SETUP_RETR,0x1a);//设置自动重发间隔时间:500us + 86us;最大自动重发次数:10次
+  	NRF_Write_Reg(NRF_WRITE_REG+RF_CH,40);       //设置RF通道为40
+  	NRF_Write_Reg(NRF_WRITE_REG+RF_SETUP,0x0f);  //设置TX发射参数,0db增益,2Mbps,低噪声增益开启   
+  	NRF_Write_Reg(NRF_WRITE_REG+CONFIG,0x0e);    //配置基本工作模式的参数;PWR_UP,EN_CRC,16BIT_CRC,接收模式,开启所有中断
+    SPI_CE_H();
+  
+  
+} 
+
+//启动NRF24L01发送一次数据
+//txbuf:待发送数据首地址
+//返回值:发送完成状况
+u8 NRF24L01_TxPacket(u8 *txbuf)
+{
+	u8 sta;
+ 	//SPI1_SetSpeed(SPI_SPEED_8);//spi速度为9Mhz（24L01的最大SPI时钟为10Mhz）   
+	SPI_CE_L();//NRF24L01_CE=0;
+  NRF_Write_Buf(WR_TX_PLOAD,txbuf,TX_PLOAD_WIDTH);//写数据到TX BUF  32个字节
+ 	SPI_CE_H();//NRF24L01_CE=1;//启动发送	
+	while(NRF24L01_IRQ!=0);//等待发送完成
+	sta=NRF_Read_Reg(NRFRegSTATUS);  //读取状态寄存器的值	   
+	NRF_Write_Reg(NRF_WRITE_REG+NRFRegSTATUS,sta); //清除TX_DS或MAX_RT中断标志
+	if(sta&MAX_TX)//达到最大重发次数
+	{
+		NRF_Write_Reg(FLUSH_TX,0xff);//清除TX FIFO寄存器
+		return MAX_TX; 
+	}
+	if(sta&TX_OK)//发送完成
+	{
+		return TX_OK;
+	}
+	return 0xff;//其他原因发送失败
+}
 
 //接收模式
 void SetRX_Mode(void)

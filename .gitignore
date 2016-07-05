@@ -233,3 +233,7 @@ Crazepony.uvgui.Administrator
 /Lib/inc
 /Lib/src
 /StartUp
+/*.uvoptx
+/*.saved_uv4
+/*.uvprojx
+/RTE
