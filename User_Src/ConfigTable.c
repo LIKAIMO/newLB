@@ -49,7 +49,7 @@ void TableWriteEEPROM(void)
 }
 
 
-extern u8 RX_ADDRESS[RX_ADR_WIDTH];
+
 
 
 extern u8 NRFMatched;

@@ -71,6 +71,18 @@ void ReceiveDataFormNRF(void)
 			 case MSP_ACC_CALI:
 					imuCaliFlag = 1;
 			 break;
+			 case MSP_TX_ADR_CHANGE:
+				if(RX_ADDRESS[1] != NRF24L01_RXDATA[5] || RX_ADDRESS[2] != NRF24L01_RXDATA[6] 
+					|| RX_ADDRESS[3] != NRF24L01_RXDATA[7] || RX_ADDRESS[4] != NRF24L01_RXDATA[8])
+				{
+					RX_ADDRESS[1] = NRF24L01_RXDATA[5];
+					RX_ADDRESS[2] = NRF24L01_RXDATA[6];
+					RX_ADDRESS[3] = NRF24L01_RXDATA[7];
+					RX_ADDRESS[4] = NRF24L01_RXDATA[8];
+					SetRX_Mode();
+					SaveParamsToEEPROM();
+				}
+			break;
 		 }
 		 
 	 }	
@@ -78,51 +90,36 @@ void ReceiveDataFormNRF(void)
 }
 
 /*****NRF24L01 match *****/
-static uint8_t sta;
-extern u8  RX_ADDRESS[RX_ADR_WIDTH];		
+static uint8_t sta;	
 extern void SaveParamsToEEPROM(void);
 u8 NRFMatched = 0;
 
 void NRFmatching(void)
 {
-	static uint32_t nTs,nT;
-	static uint32_t writeOvertime = 2 * 1000000;// unit :us
-	
-	LedC_on;   //led3 always on when 2.4G matching
-	nTs = micros();
-	
-  do  
-	{   
-		  NRFMatched = 0;
-		  nT = micros() - nTs;
-		  
-		  if(nT >= writeOvertime){
-				RX_ADDRESS[4] = table.NRFaddr[4];
-				break;	//exit when time out,and do not change original address
-			}
-
-			SetRX_Mode();                 // reset RX mode write RX panel address
-			delay_ms(4);									// delay is needed after reset NRF
-		  sta = NRF_Read_Reg(NRF_READ_REG + NRFRegSTATUS);
-      
-		  if((sta & 0x0E )== 0x00){
-				NRFMatched = 1;
-			}else{
-				RX_ADDRESS[4] ++;		//search the next RX_ADDRESS
-				if(RX_ADDRESS[4] == 0xff ){
-					RX_ADDRESS[4] = 0x00;
-				}
-			}
-
-  }while((sta & 0x0E )== 0x0E); 
-	
-	SetRX_Mode();                 // reset RX mode
-	
-	if((NRFMatched == 1)&&(RX_ADDRESS[4]!= table.NRFaddr[4])){
-		SaveParamsToEEPROM();			//write eeprom when current addr != original addr
+	SetRX_Mode();                 // reset RX mode write RX panel address
+	delay_ms(4);									// delay is needed after reset NRF
+	sta = NRF_Read_Reg(NRF_READ_REG + NRFRegSTATUS);
+	if((sta & 0x0E) == 0x00)
+	{
+		NRFMatched = 1;
 	}
-	
-	LedC_off;		// matching end 
+	else
+	{
+		RX_ADDRESS[1] = 0x00;
+		RX_ADDRESS[2] = 0x00;
+		RX_ADDRESS[3] = 0x00;
+		RX_ADDRESS[4] = 0x01;
+	}
+	SetRX_Mode();                 
+	delay_ms(4);									
+	sta = NRF_Read_Reg(NRF_READ_REG + NRFRegSTATUS);//search once,if not 00000001, use last time address
+	if((sta & 0x0E) == 0x0E)
+	{
+		RX_ADDRESS[1] = table.NRFaddr[1];
+		RX_ADDRESS[2] = table.NRFaddr[2];
+		RX_ADDRESS[3] = table.NRFaddr[3];
+		RX_ADDRESS[4] = table.NRFaddr[4];
+	}
 }
 
 

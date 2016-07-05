@@ -24,7 +24,7 @@ enum {DISARMED=0,REQ_ARM,ARMED,REQ_DISARM};
 #define APP_YAW_DB	 70 //dead band 
 #define APP_PR_DB		 50
 
-
+#define MSP_TX_ADR_CHANGE 99 //modify NRF24L01 address
 
 
 #define CUT_DB(x,mid,DB) {if(fabs(x-mid)<DB) x=mid; \

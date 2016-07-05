@@ -71,7 +71,7 @@ u8 NRF24L01_Check(void);
 extern uint8_t NRF24L01_RXDATA[32];
 extern uint8_t NRF24L01_TXDATA[32];
 
-
+extern u8 RX_ADDRESS[RX_ADR_WIDTH];
 
 
 #endif
